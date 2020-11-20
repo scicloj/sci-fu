@@ -11,3 +11,15 @@
   (t/dataset "resources/data/avocado.csv.gz"
              {:key-fn keyword}))
 
+(-> data
+    (t/select-rows #(and (= (:type %) "organic")
+                         (= (:region %) "Albany")))
+    (t/order-by :Date)
+    (t/add-or-replace-column :smoothed-price
+                             #(rolling/fixed-rolling-window (:AveragePrice %)
+                                                            10
+                                                            stats/mean))
+    (t/add-or-replace-column :week-of-year
+                             #(map (partial tech.v3.datatype.datetime/long-temporal-field :week-of-year) (:Date %)))
+    (t/select-columns [:week-of-year :Date :AveragePrice :smoothed-price]))
+
