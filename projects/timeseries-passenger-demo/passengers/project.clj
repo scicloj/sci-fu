@@ -15,5 +15,5 @@
                  [generateme/fastmath "2.0.5"]
                  [tide "0.2.0-20170806.131424-3" :exclusions [org.apache.commons/commons-math3]]
                  [techascent/tech.viz "0.4.3"]
-                 [aerial.hanami "0.12.1"]]
+                 [aerial.hanami "0.12.4"]]
   :repositories [["nm-repo" "http://repo.nm.dev/maven/"]])
