@@ -9,4 +9,5 @@ The notebook in this folder was presented during a [sci-fu](https://github.com/s
 
 The [passengers folder](./passengers) contains the Clojure project.
 
-Here is [the rendered tutorial](https://scicloj.github.io/sci-fu/projects/time-series-passenger-demo/passengers/docs/passengers/core/).
+Here is [the rendered tutorial](https://scicloj.github.io/sci-fu/projects/timeseries-passenger-demo/passengers/docs/passengers/core/).
+
