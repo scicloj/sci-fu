@@ -6,6 +6,7 @@
             [tech.viz.vega :as viz]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.functional :as dtype-fun]
+            [tech.v3.datatype.rolling :as dtype-roll]
             [tech.v3.datatype.datetime :as dtype-dt]
             [aerial.hanami.common :as hanami-common]
             [aerial.hanami.templates :as hanami-templates]))
@@ -62,4 +63,30 @@ passengers-with-log
  :XTYPE :temporal
  :Y :log-passengers
  :YSCALE {:zero false})
+
+(def passengers-with-rolling
+  (-> passengers-with-log
+      (tablecloth/add-or-replace-column
+       :rolling-mean
+       #(-> %
+            (:log-passengers)
+            (dtype-roll/fixed-rolling-window
+             12
+             dtype-fun/mean {:relative-window-position :left})))))
+
+;; This seems not to use the window on the left. 
+(dtype-roll/fixed-rolling-window (range 20) 10 dtype-fun/sum {:relative-window-position :left})
+
+^kind/dataset
+passengers-with-rolling
+
+^kind/vega
+(hanami-common/xform
+ hanami-templates/line-chart
+ :DATA (prep-data-for-plotting passengers-with-rolling)
+ :X :Month
+ :XTYPE :temporal
+ :Y :rolling-mean
+ :YSCALE {:zero false})
+
 
