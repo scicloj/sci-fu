@@ -10,7 +10,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [dev.nm/stat "1.2.0-SNAPSHOT"]
-                 [scicloj/tablecloth "5.00-beta-5a"]
+                 [scicloj/tablecloth "5.00-beta-21"]
                  [scicloj/notespace "3-alpha3-SNAPSHOT"]
                  [generateme/fastmath "2.0.5"]
                  [tide "0.2.0-20170806.131424-3" :exclusions [org.apache.commons/commons-math3]]
