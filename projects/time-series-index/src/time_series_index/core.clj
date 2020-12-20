@@ -47,5 +47,5 @@ data
 (slice data dt-index "1949" "1951")
 
 ;; What about having a fn that includes the index?
-(defn indexed-dataset [data index-column options]
-  (tablecloth/dataset data ))
+;; (defn indexed-dataset [data index-column options]
+;;   (tablecloth/dataset data ))
