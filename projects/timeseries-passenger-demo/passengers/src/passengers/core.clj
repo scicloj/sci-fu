@@ -1,15 +1,16 @@
 (ns passengers.core
-  (:require [notespace.api :as notespace]
-            [notespace.kinds :as kind]
-            [tech.v3.dataset :as dataset]
-            [tablecloth.api :as tablecloth]
-            [tech.viz.vega :as viz]
-            [tech.v3.datatype :as dtype]
-            [tech.v3.datatype.functional :as dtype-fun]
-            [tech.v3.datatype.rolling :as dtype-roll]
-            [tech.v3.datatype.datetime :as dtype-dt]
-            [aerial.hanami.common :as hanami-common]
-            [aerial.hanami.templates :as hanami-templates]))
+  (:require [notespace.api :as notespace]))
+
+(require '[notespace.kinds :as kind]
+         '[tech.v3.dataset :as dataset]
+         '[tablecloth.api :as tablecloth]
+         '[tech.viz.vega :as viz]
+         '[tech.v3.datatype :as dtype]
+         '[tech.v3.datatype.functional :as dtype-fun]
+         '[tech.v3.datatype.rolling :as dtype-roll]
+         '[tech.v3.datatype.datetime :as dtype-dt]
+         '[aerial.hanami.common :as hanami-common]
+         '[aerial.hanami.templates :as hanami-templates])
 
 (def path "../data/AirPassengers.csv")
 
@@ -88,5 +89,4 @@ passengers-with-rolling
  :XTYPE :temporal
  :Y :rolling-mean
  :YSCALE {:zero false})
-
 
