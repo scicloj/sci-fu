@@ -169,3 +169,14 @@ passengers-with-rolling
           :XTYPE :temporal
           :Y :difference
           :YSCALE {:zero false})])
+
+
+
+
+
+
+
+(import org.hawkular.datamining.forecast.stats.AugmentedDickeyFullerTest)
+
+(-> (AugmentedDickeyFullerTest. (double-array (reductions + (repeatedly 9999 rand))) 2)
+    (.pValue))

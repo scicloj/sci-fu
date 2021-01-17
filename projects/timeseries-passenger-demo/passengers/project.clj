@@ -9,4 +9,6 @@
                  [generateme/fastmath "2.0.5"]
                  [tide "0.2.0-20170806.131424-3" :exclusions [org.apache.commons/commons-math3]]
                  [techascent/tech.viz "0.4.3"]
-                 [aerial.hanami "0.12.4"]])
+                 [aerial.hanami "0.12.4"]
+                 [com.cloudera.sparkts/sparkts "0.4.0"]
+                 [org.hawkular.datamining/hawkular-datamining-forecast "0.2.0.Final"]])
