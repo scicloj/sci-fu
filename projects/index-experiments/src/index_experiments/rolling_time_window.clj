@@ -97,7 +97,7 @@ datetime20
 
 (row-numbers-of-last-few-days-by-index
  datetime20
- 14)
+ 5)
 
 ["## Measuring time"]
 
