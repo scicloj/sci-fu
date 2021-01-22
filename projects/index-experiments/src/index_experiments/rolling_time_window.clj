@@ -150,4 +150,4 @@ datetime20
 
 ["## Conclusion"]
 
-["Same result, different durations."]
+["Same result, different durations. The computational complexities are of order `n^2` and `n*log(n)`, resepectively, with respect to the data size `n`."]
