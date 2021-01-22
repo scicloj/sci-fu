@@ -148,6 +148,6 @@ datetime20
                     :float64)
         fun/standard-deviation)))
 
-["Same result, different durations."]
+["## Conclusion"]
 
-["."]
+["Same result, different durations."]
