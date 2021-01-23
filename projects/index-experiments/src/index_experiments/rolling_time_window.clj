@@ -23,7 +23,7 @@
 
 (def ds
   (-> {:datetime (dtype/make-reader :local-date-time n (random-datetime))
-       :x        (repeatedly n rand)}
+       :x        (dtype/make-reader :float64 n (rand))}
       tablecloth/dataset
       (tablecloth/order-by :datetime)
       (tablecloth/add-or-replace-column :i (dtype/make-reader :int64 n idx))))
