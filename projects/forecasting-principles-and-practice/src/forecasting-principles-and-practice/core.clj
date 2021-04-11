@@ -17,19 +17,66 @@
          '[time-literals.read-write]
          )
 
-(time-literals.read-write/print-time-literals-clj!)
+
+;; get data
+
+(def data (ds/dataset "./aus-production.csv" {:key-fn keyword}))
+
+data
+
+;; define pipeline
+
+(defn calc-mean [dataset col-name]
+  (-> (col-name dataset) (fun/mean)))
+
+
+(defn calc-naive [dataset col-name]
+  (-> (col-name dataset) last ))
+
+
+(defn naive-ts-prediction-model []
+  (fn [{:metamorph/keys [id data mode] :as ctx}]
+    (case mode
+      :fit (assoc ctx id {:mean (calc-mean data :Beer)
+                          :naive (calc-naive data :Beer)}))))
+
+(def pipeline
+  (ml/pipeline
+   {:metamorph/id :model}
+   (naive-ts-prediction-model)))
+
+
+(def test-run
+  (pipeline
+    {:metamorph/mode :fit
+     :metamorph/data data}))
+
+(keys test-run)
+
+(get test-run :model)
+
+
+
+
+
+
+
+
+
+
+;; (time-literals.read-write/print-time-literals-clj!)
 
 ;
 ; generate some sample data
 
-(defn time-index [start-inst n tf]
-  (datetime/plus-temporal-amount start-inst (range n) tf))
+;; (defn time-index [start-inst n tf]
+;;   (datetime/plus-temporal-amount start-inst (range n) tf))
 
-(defn get-test-ds [start-time num-rows temporal-unit]
-  (tbl/dataset {:idx (time-index start-time num-rows temporal-unit)
-                :value (take num-rows (repeatedly #(rand 200)))}))
+;; (defn get-test-ds [start-time num-rows temporal-unit]
+;;   (tbl/dataset {:idx (time-index start-time num-rows temporal-unit)
+;;                 :value (take num-rows (repeatedly #(rand 200)))}))
 
-(get-test-ds #time/date "1970-01-01" 10 :days)
+;; (get-test-ds #time/date "1970-01-01" 10 :days)
 ;; => _unnamed [10 2]:
 ;;    |        :idx |       :value |
 ;;    |-------------|--------------|
