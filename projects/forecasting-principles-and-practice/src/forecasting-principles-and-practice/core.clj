@@ -2,13 +2,17 @@
 
 (require '[scicloj.metamorph.core :as morph]
          '[tech.v3.datatype.datetime :as datetime]
+         '[tech.v3.datatype.functional :as fun]
+         '[scicloj.ml.core :as ml]
+         '[scicloj.ml.metamorph :as mm]
+         '[scicloj.ml.dataset :as ds]
          ;; '[tech.v3.dataset :as ds]
-         '[tablecloth.api :as tbl]
-         '[tablecloth.pipeline :as tbl-pipe]
-         '[tech.v3.libs.smile.metamorph :as smile]
-         '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
-         '[tech.v3.dataset.modelling :as ds-mod]
-         '[tech.v3.ml.metamorph :as ml-mm] ;; tech.ml support for metamorph
+         ;; '[tablecloth.api :as tbl]
+         ;; '[tablecloth.pipeline :as tbl-pipe]
+         ;; '[tech.v3.libs.smile.metamorph :as smile]
+         ;; '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
+         ;; '[tech.v3.dataset.modelling :as ds-mod]
+         ;; '[tech.v3.ml.metamorph :as ml-mm] ;; tech.ml support for metamorph
          '[time-literals.data-readers]
          '[time-literals.read-write]
          )
