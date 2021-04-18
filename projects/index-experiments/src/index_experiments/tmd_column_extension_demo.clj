@@ -20,6 +20,11 @@
                                         PreparedGeometryFactory)
         (java.util TreeMap))
 
+
+;; Make sure tech.datatype knows about the datatype you are working with.
+;; Which you test by calling tech.v3.datatype.casting/elemwise-datatype on the data.
+(casting/add-object-datatype! :geometry Geometry true)
+
 ;; https://epsg.io/4326
 (def wgs84-crs (crs/create-crs 4326))
 
@@ -40,6 +45,7 @@
   to local Eucledian coordinates around NYC."
   [geometry]
   (jts/transform-geom geometry crs-transform))
+
 (def get-neighbourhoods-data
   (memoize
    (fn []
@@ -57,59 +63,44 @@
        (map (juxt spatial/latitude
                   spatial/longitude))))
 
+
 (def get-neighbourhoods
-  (memoize
-   (fn []
-     (-> (get-neighbourhoods-data)
-         (->> (map (fn [{:keys [geometry properties]}]
-                     (assoc properties :geometry geometry))))
-         tablecloth/dataset
-         (tablecloth/rename-columns {(keyword "@id") :id})
-         (tablecloth/add-or-replace-column
-          :geometry #(map wgs84->nad83-2011
-                          (:geometry %)))
-         (vary-meta assoc :print-column-max-width 100)
-         ))))
+  ;; (memoize)
+  (fn []
+    (-> (get-neighbourhoods-data)
+        (->> (map (fn [{:keys [geometry properties]}]
+                    (assoc properties :geometry (wgs84->nad83-2011 geometry)))))
+        ds/->dataset
+        (tablecloth/rename-columns {(keyword "@id") :id})
+        ;; (tablecloth/add-or-replace-column
+        ;;  :geometry (ds/new-column :geometry
+        ;;                           (tech.v3.dataset.impl.column/make)
+        ;;                           #(map wgs84->nad83-2011 (:geometry %))))
+        (vary-meta assoc :print-column-max-width 100))))
+
+(-> (ds/new-column :foo [1 2 3])
+    (meta))
+
+
 
 ^kind/dataset
 (get-neighbourhoods)
 
 
-(-> (get-neighbourhoods)
-    :geometry
-    first
-    dtype/elemwise-datatype
-    casting/datatype->object-class
-    )
-
-;; Make sure tech.datatype knows about the datatype you are working with.
-;; Which you test by calling tech.v3.datatype.casting/elemwise-datatype on the data.
-(casting/add-object-datatype! :geometry Geometry true)
-
-;; Extend the multimethod 
 (defmethod tech.v3.dataset.impl.column-index-structure/make-index-structure Geometry
   [data _]
-  []
-  )
-
-  ;; (let [tree ^STRtree (STRtree.)]
-  ;;   (doseq [[index-position geometry] (map-indexed vector data)]
-  ;;     (.insert tree
-  ;;              (.getEnvelopeInternal geometry)
-  ;;              {:index-position index-position
-  ;;               :prepared-geometry (PreparedGeometryFactory/prepare geometry)}))
-  ;;   tree)
+  (let [tree ^STRtree (STRtree.)]
+    (doseq [[index-position geometry] (map-indexed vector data)]
+      (.insert tree
+               (.getEnvelopeInternal geometry)
+               {:index-position index-position
+                :prepared-geometry (PreparedGeometryFactory/prepare geometry)}))
+    tree))
 
 (->
     (get-neighbourhoods)
     :geometry
     ds-col/index-structure
-    ;; type
-    ;; (with-index-structure [this datatype-keyword klass make-index-structure-fn]
-    ;; (.with-index-structure :geometry Geometry (fn [data meta] []))
-    ;; ds-col/index-structure
-    ;; ds-col/index-structure
     )
-
 
 
