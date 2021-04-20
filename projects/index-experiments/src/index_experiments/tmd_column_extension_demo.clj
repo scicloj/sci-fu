@@ -72,10 +72,6 @@
                     (assoc properties :geometry (wgs84->nad83-2011 geometry)))))
         ds/->dataset
         (tablecloth/rename-columns {(keyword "@id") :id})
-        ;; (tablecloth/add-or-replace-column
-        ;;  :geometry (ds/new-column :geometry
-        ;;                           (tech.v3.dataset.impl.column/make)
-        ;;                           #(map wgs84->nad83-2011 (:geometry %))))
         (vary-meta assoc :print-column-max-width 100))))
 
 (-> (ds/new-column :foo [1 2 3])
@@ -97,10 +93,7 @@
                 :prepared-geometry (PreparedGeometryFactory/prepare geometry)}))
     tree))
 
-(->
-    (get-neighbourhoods)
+(-> (get-neighbourhoods)
     :geometry
-    ds-col/index-structure
-    )
-
-
+    ds-col/index-structure)
+;; => #object[org.locationtech.jts.index.strtree.STRtree 0x33540806 "org.locationtech.jts.index.strtree.STRtree@33540806"]
