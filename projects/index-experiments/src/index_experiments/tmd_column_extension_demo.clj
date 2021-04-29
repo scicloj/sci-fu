@@ -70,13 +70,15 @@
     (-> (get-neighbourhoods-data)
         (->> (map (fn [{:keys [geometry properties]}]
                     (assoc properties :geometry (wgs84->nad83-2011 geometry)))))
-        ds/->dataset
+        tablecloth/dataset
+        (tablecloth/add-or-replace-column :geometry
+                                          #(with-meta (:geometry %) {:categorical? false}))
         (tablecloth/rename-columns {(keyword "@id") :id})
         (vary-meta assoc :print-column-max-width 100))))
 
-(-> (ds/new-column :foo [1 2 3])
+(-> (get-neighbourhoods) 
+    :geometry
     (meta))
-
 
 
 ^kind/dataset
@@ -95,5 +97,6 @@
 
 (-> (get-neighbourhoods)
     :geometry
-    ds-col/index-structure)
-;; => #object[org.locationtech.jts.index.strtree.STRtree 0x33540806 "org.locationtech.jts.index.strtree.STRtree@33540806"]
+    ds-col/index-structure
+    type
+    )
