@@ -71,8 +71,6 @@
         (->> (map (fn [{:keys [geometry properties]}]
                     (assoc properties :geometry (wgs84->nad83-2011 geometry)))))
         tablecloth/dataset
-        (tablecloth/add-or-replace-column :geometry
-                                          #(with-meta (:geometry %) {:categorical? false}))
         (tablecloth/rename-columns {(keyword "@id") :id})
         (vary-meta assoc :print-column-max-width 100))))
 
@@ -85,7 +83,7 @@
 (get-neighbourhoods)
 
 
-(defmethod tech.v3.dataset.impl.column-index-structure/make-index-structure Geometry
+(defmethod tech.v3.dataset.impl.column-index-structure/make-index-structure :geometry
   [data _]
   (let [tree ^STRtree (STRtree.)]
     (doseq [[index-position geometry] (map-indexed vector data)]
