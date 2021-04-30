@@ -3,6 +3,7 @@
             [tech.v3.dataset.column :as ds-col]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.casting :as casting]
+            [tech.v3.protocols.column :as col-proto]
             [tablecloth.api :as tablecloth]
             [geo
              [geohash :as geohash]
@@ -95,6 +96,41 @@
 
 (-> (get-neighbourhoods)
     :geometry
+    (vary-meta assoc :categorical? false)
     ds-col/index-structure
-    type
-    )
+    type)
+
+(extend-type org.locationtech.jts.index.strtree.STRtree
+  col-proto/PIndexStructure
+  (select-from-index [index-structure mode selection-spec]
+    (case mode
+      :intersect
+      (let [{:keys [geometry]} selection-spec]
+        (into []
+              (comp (filter (fn [row]
+                              (.intersects ^PreparedGeometry (:prepared-geometry row)
+                                           geometry)))
+                    (map :index-position))
+              (.query ^STRtree index-structure
+                      ^Envelope (.getEnvelopeInternal ^Point geometry)))))))
+
+;; Which neighbourhoods are nearby Crown Heights ?
+(let [neighbourhoods              (get-neighbourhoods)
+      index-structure            (-> neighbourhoods
+                                     :geometry
+                                     (vary-meta assoc :categorical? false)
+                                     ds-col/index-structure)
+      crown-heights-geom              (-> (get-neighbourhoods)
+                                     (tablecloth/select-rows #(-> % :neighborhood (= "Crown Heights")))
+                                     :geometry
+                                     first)
+      around-crown-heights-geom (.buffer ^Geometry crown-heights-geom
+                                         1000)
+      row-numbers                (col-proto/select-from-index index-structure
+                                                              :intersect
+                                                              {:geometry around-crown-heights-geom})
+      intersecting-neighbourhoods (-> neighbourhoods
+                                      (tablecloth/select-rows row-numbers)
+                                      :neighborhood)]
+  intersecting-neighbourhoods)
+
