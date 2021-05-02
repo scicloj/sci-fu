@@ -1,40 +1,46 @@
 (ns forecasting-principles-and-practice.core)
 
-(require '[scicloj.metamorph.core :as morph]
-         '[tech.v3.datatype.datetime :as datetime]
-         '[tech.v3.datatype.functional :as fun]
-         '[scicloj.ml.core :as ml]
-         '[scicloj.ml.metamorph :as mm]
-         '[scicloj.ml.dataset :as ds]
-         
+(require ;;'[scicloj.metamorph.core :as morph]
+ '[tech.v3.datatype.datetime :as datetime]
+ '[tech.v3.datatype.functional :as fun]
+ '[scicloj.ml.core :as ml]
+         ;;'[scicloj.ml.metamorph :as mm]
+ '[scicloj.ml.dataset :as ds]
+
          ;; '[tech.v3.dataset :as ds]
-         ;; '[tablecloth.api :as tbl]
+ '[tablecloth.api :as tbl]
          ;; '[tablecloth.pipeline :as tbl-pipe]
          ;; '[tech.v3.libs.smile.metamorph :as smile]
          ;; '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
          ;; '[tech.v3.dataset.modelling :as ds-mod]
          ;; '[tech.v3.ml.metamorph :as ml-mm] ;; tech.ml support for metamorph
-         
-         '[time-literals.data-readers]
-         '[time-literals.read-write]
-         '[notespace.api :as notespace]
-         '[notespace.kinds :as kind]
-         '[notespace.state :as state]
-         '[notespace.paths :as paths]
-         
-         '[tablecloth.time.index :as index])
+
+ '[time-literals.data-readers]
+ '[time-literals.read-write]
+ '[notespace.api :as notespace]
+ '[notespace.kinds :as kind]
+
+        ;;'[notespace.state :as state]
+        ;;'[notespace.paths :as paths]
+
+ '[tablecloth.time.index :as index])
 
 ^kind/hidden
 (comment
-  (notespace/init-with-browser)
-)
-
+  (notespace/init-with-browser))
 
   ;; data
-(def data (ds/dataset "./aus-production.csv" {:key-fn keyword}))
+(def data (ds/dataset "./data/aus-production.csv" {:key-fn keyword}))
+;; => #'forecasting-principles-and-practice.core/data
+
+;;(ds/dataset? data)
+;;(def tbldata (tbl/dataset data))
+;;(tbl/info tbldata)
+
+(def indexed-data (index/index-by data :Quarter))
 
 ^kind/dataset
-data
+indexed-data
 
 ;; define pipeline
 
@@ -44,39 +50,70 @@ data
 
 ;; y-hat(T+h|T) = y(T)
 (defn calc-naive [dataset col-name]
-  (-> (col-name dataset) last ))
+  (-> (col-name dataset) last))
 
 ;; y-hat(T+h|T) = y(T+h-m(k+1))
 ;; m is seasonal period
 (defn calc-seasonal-naive [dataset col-name]
-  (-> (col-name dataset) last ))
+  (-> (col-name dataset) last))
+
+(defn calc-drift [dataset col-name]
+  (-> (col-name dataset) last))
+
+;; (defn snaive
+;;   [dataset m]
+;;   (fn
+;;     [T h]
+;;     (let [k (quot (- h 1) m)]
+;;       (- (+ T h) (* m (+ k 1))))))
+
+;; (defn snaive2
+;;   [dataset m]
+;;   (fn
+;;     [h]
+;;     (let [k (quot (- h 1) m)]
+;;       (- h (* m (+ k 1))))))
+
+
+;; (def sdf (snaive "x" 4))
+
+;; (def hs (take 16 (range)))
+
+;; <................><....>
 
 
 (defn ts-prediction-model []
   (fn [{:metamorph/keys [id data mode] :as ctx}]
     (case mode
       :fit (assoc ctx id {:mean (calc-mean data :Beer)
-                          :naive (calc-naive data :Beer)}))))
+                          :naive (calc-naive data :Beer)
+                          :snaive (calc-seasonal-naive data :Beer)
+                          :drift (calc-drift data :Beer)})
+
+      :transform (assoc ctx id {:mean (:mean (:model ctx))
+                                :naive (:naive (:model ctx))}))))
 
 (def pipeline
   (ml/pipeline
    {:metamorph/id :model}
    (ts-prediction-model)))
 
-
-(def test-run
+;; returns a ctx
+(def training-run
   (pipeline
-    {:metamorph/mode :fit
-     :metamorph/data data}))
+   {:metamorph/mode :fit
+    :metamorph/data data}))
 
-(keys test-run)
-
-(get test-run :model)
-
-
+(def prediction-run
+  (pipeline
+   (merge training-run {:metamorph/mode :transform})))
 
 
+(keys training-run)
+(get training-run :model)
 
+(keys prediction-run)
+(get prediction-run :model)
 
 
 
