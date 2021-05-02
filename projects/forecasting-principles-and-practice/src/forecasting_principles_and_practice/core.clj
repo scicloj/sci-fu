@@ -1,7 +1,9 @@
 (ns forecasting-principles-and-practice.core)
 
 (require ;;'[scicloj.metamorph.core :as morph]
- '[tech.v3.datatype.datetime :as datetime]
+ '[clojure.string :as string]
+ '[tech.v3.datatype.casting :as casting]
+'[tech.v3.datatype.datetime :as datetime]
  '[tech.v3.datatype.functional :as fun]
  '[scicloj.ml.core :as ml]
          ;;'[scicloj.ml.metamorph :as mm]
@@ -25,12 +27,23 @@
 
  '[tablecloth.time.index :as index])
 
+(import [org.threeten.extra YearQuarter])
+
 ^kind/hidden
 (comment
   (notespace/init-with-browser))
 
+(casting/add-object-datatype! :year-quarter YearQuarter true)
+
   ;; data
-(def data (ds/dataset "./data/aus-production.csv" {:key-fn keyword}))
+(def data (ds/dataset "./data/aus-production.csv"
+                      {:key-fn    keyword
+                       :parser-fn {"Quarter" [:year-quarter
+                                              (fn [date-str]
+                                                (-> date-str
+                                                    (string/replace #" " "-")
+                                                    (YearQuarter/parse)))]}}))
+
 ;; => #'forecasting-principles-and-practice.core/data
 
 ;;(ds/dataset? data)

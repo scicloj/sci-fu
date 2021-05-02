@@ -7,4 +7,6 @@
         scicloj/notespace {:mvn/version "3-beta5"}
 
         scicloj/tablecloth.time {:local/root "../../../tablecloth.time"}
+
+        org.threeten/threeten-extra {:mvn/version "1.5.0"}
 }}
