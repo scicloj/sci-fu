@@ -25,7 +25,8 @@
         ;;'[notespace.state :as state]
         ;;'[notespace.paths :as paths]
 
- '[tablecloth.time.index :as index])
+ '[tablecloth.time.index :as index]
+ '[tablecloth.time.api :refer [slice] :as ttime])
 
 (import [org.threeten.extra YearQuarter])
 
@@ -35,25 +36,16 @@
 
 (casting/add-object-datatype! :year-quarter YearQuarter true)
 
-  ;; data
+;; data - parsed quarters
 (def data (ds/dataset "./data/aus-production.csv"
                       {:key-fn    keyword
-                       :parser-fn {"Quarter" [:year-quarter
+                       :parser-fn {"Quarter" [:packed-local-date
                                               (fn [date-str]
                                                 (-> date-str
                                                     (string/replace #" " "-")
-                                                    (YearQuarter/parse)))]}}))
+                                                    (YearQuarter/parse)
+                                                    .atEndOfQuarter))]}}))
 
-;; => #'forecasting-principles-and-practice.core/data
-
-;;(ds/dataset? data)
-;;(def tbldata (tbl/dataset data))
-;;(tbl/info tbldata)
-
-(def indexed-data (index/index-by data :Quarter))
-
-^kind/dataset
-indexed-data
 
 ;; define pipeline
 
