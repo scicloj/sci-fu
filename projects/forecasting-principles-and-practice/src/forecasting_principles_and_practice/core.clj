@@ -3,7 +3,7 @@
 (require ;;'[scicloj.metamorph.core :as morph]
  '[clojure.string :as string]
  '[tech.v3.datatype.casting :as casting]
-'[tech.v3.datatype.datetime :as datetime]
+ '[tech.v3.datatype.datetime :as datetime]
  '[tech.v3.datatype.functional :as fun]
  '[scicloj.ml.core :as ml]
          ;;'[scicloj.ml.metamorph :as mm]
@@ -37,15 +37,22 @@
 (casting/add-object-datatype! :year-quarter YearQuarter true)
 
 ;; data - parsed quarters
-(def data (ds/dataset "./data/aus-production.csv"
-                      {:key-fn    keyword
-                       :parser-fn {"Quarter" [:packed-local-date
-                                              (fn [date-str]
-                                                (-> date-str
-                                                    (string/replace #" " "-")
-                                                    (YearQuarter/parse)
-                                                    .atEndOfQuarter))]}}))
+(def data (-> (ds/dataset "./data/aus-production.csv"
+                          {:key-fn    keyword
+                           :parser-fn {"Quarter" [:year-quarter
+                                                  (fn [date-str]
+                                                    (-> date-str
+                                                        (string/replace #" " "-")
+                                                        (YearQuarter/parse)))]}})
+              (ds/add-or-replace-column :QuarterEnd
+                                        #(tech.v3.datatype/emap (fn [x] (.atEndOfQuarter x)) :local-date (:Quarter %)))))
 
+
+data
+
+(-> data
+    (index/index-by :QuarterEnd)
+    (slice "1950-01-01" "1960-12-31"))
 
 ;; define pipeline
 
