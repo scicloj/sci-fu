@@ -1,6 +1,7 @@
 (ns index-experiments.tmd-column-extension-demo
   (:require [tech.v3.dataset :as ds]
             [tech.v3.dataset.column :as ds-col]
+            [tech.v3.dataset.column-index-structure :as col-idx]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.casting :as casting]
             [tech.v3.protocols.column :as col-proto]
@@ -86,6 +87,7 @@
 
 (defmethod tech.v3.dataset.impl.column-index-structure/make-index-structure :geometry
   [data _]
+  (println :geometry)
   (let [tree ^STRtree (STRtree.)]
     (doseq [[index-position geometry] (map-indexed vector data)]
       (.insert tree
@@ -96,13 +98,13 @@
 
 (-> (get-neighbourhoods)
     :geometry
-    (vary-meta assoc :categorical? false)
     ds-col/index-structure
-    type)
+    ;; type
+    )
 
 (extend-type org.locationtech.jts.index.strtree.STRtree
   col-proto/PIndexStructure
-  (select-from-index [index-structure mode selection-spec]
+  (select-from-index [index-structure mode selection-spec _]
     (case mode
       :intersect
       (let [{:keys [geometry]} selection-spec]
@@ -126,9 +128,7 @@
                                      first)
       around-crown-heights-geom (.buffer ^Geometry crown-heights-geom
                                          1000)
-      row-numbers                (col-proto/select-from-index index-structure
-                                                              :intersect
-                                                              {:geometry around-crown-heights-geom})
+      row-numbers                (col-idx/select-from-index index-structure :intersect {:geometry around-crown-heights-geom})
       intersecting-neighbourhoods (-> neighbourhoods
                                       (tablecloth/select-rows row-numbers)
                                       :neighborhood)]
