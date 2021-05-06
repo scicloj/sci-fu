@@ -38,14 +38,17 @@
 
 (casting/add-object-datatype! :year-quarter YearQuarter true)
 
-  ;; data
-(def data (ds/dataset "./data/aus-production.csv"
-                      {:key-fn    keyword
-                       :parser-fn {"Quarter" [:year-quarter
-                                              (fn [date-str]
-                                                (-> date-str
-                                                    (string/replace #" " "-")
-                                                    (YearQuarter/parse)))]}}))
+;; data - parsed quarters
+(def data (-> (ds/dataset "./data/aus-production.csv"
+                          {:key-fn    keyword
+                           :parser-fn {"Quarter" [:year-quarter
+                                                  (fn [date-str]
+                                                    (-> date-str
+                                                        (string/replace #" " "-")
+                                                        (YearQuarter/parse)))]}})
+              (ds/add-or-replace-column :QuarterEnd
+                                        #(tech.v3.datatype/emap (fn [x] (.atEndOfQuarter x)) :local-date (:Quarter %)))))
+
 
 (def indexed-data (idx/index-by data :Quarter))
 
