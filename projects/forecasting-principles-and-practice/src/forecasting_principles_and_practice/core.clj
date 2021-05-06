@@ -1,16 +1,20 @@
-(ns forecasting-principles-and-practice.core)
+(ns forecasting-principles-and-practice.core
+  (:require [tablecloth.api :as tbl]
+            [tablecloth.time.index :as idx]
+            [tablecloth.time.api :refer [slice]]))
+            
 
 (require ;;'[scicloj.metamorph.core :as morph]
  '[clojure.string :as string]
  '[tech.v3.datatype.casting :as casting]
-'[tech.v3.datatype.datetime :as datetime]
+ '[tech.v3.datatype.datetime :as datetime]
  '[tech.v3.datatype.functional :as fun]
  '[scicloj.ml.core :as ml]
          ;;'[scicloj.ml.metamorph :as mm]
  '[scicloj.ml.dataset :as ds]
 
          ;; '[tech.v3.dataset :as ds]
- '[tablecloth.api :as tbl]
+
          ;; '[tablecloth.pipeline :as tbl-pipe]
          ;; '[tech.v3.libs.smile.metamorph :as smile]
          ;; '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
@@ -24,8 +28,7 @@
 
         ;;'[notespace.state :as state]
         ;;'[notespace.paths :as paths]
-
- '[tablecloth.time.index :as index])
+ )
 
 (import [org.threeten.extra YearQuarter])
 
@@ -44,134 +47,122 @@
                                                     (string/replace #" " "-")
                                                     (YearQuarter/parse)))]}}))
 
-;; => #'forecasting-principles-and-practice.core/data
+(def indexed-data (idx/index-by data :Quarter))
 
-;;(ds/dataset? data)
-;;(def tbldata (tbl/dataset data))
-;;(tbl/info tbldata)
+(def train-data (slice indexed-data
+                       (YearQuarter/parse "1992-Q1")
+                       (YearQuarter/parse "2006-Q4")))
 
-(def indexed-data (index/index-by data :Quarter))
-
-^kind/dataset
-indexed-data
-
-;; define pipeline
-
-;; y-hat(T+h|T) = y-bar = (y(1) + y(2) ... y(T))/T
-(defn calc-mean [dataset col-name]
-  (-> (col-name dataset) (fun/mean)))
-
-;; y-hat(T+h|T) = y(T)
-(defn calc-naive [dataset col-name]
-  (-> (col-name dataset) last))
-
-;; y-hat(T+h|T) = y(T+h-m(k+1))
-;; m is seasonal period
-(defn calc-seasonal-naive [dataset col-name]
-  (-> (col-name dataset) last))
-
-(defn calc-drift [dataset col-name]
-  (-> (col-name dataset) last))
-
-;; (defn snaive
-;;   [dataset m]
-;;   (fn
-;;     [T h]
-;;     (let [k (quot (- h 1) m)]
-;;       (- (+ T h) (* m (+ k 1))))))
-
-;; (defn snaive2
-;;   [dataset m]
-;;   (fn
-;;     [h]
-;;     (let [k (quot (- h 1) m)]
-;;       (- h (* m (+ k 1))))))
+(def test-data (slice indexed-data
+                      (YearQuarter/parse "2007-Q1")
+                      (YearQuarter/parse "2009-Q4")))
 
 
-;; (def sdf (snaive "x" 4))
 
-;; (def hs (take 16 (range)))
+;; We look at 4 "models" - mean, naive, seasonal-naive and drift
+;; First, we compute the models, and then use it's parameters in prediction
 
-;; <................><....>
+;; the calc(s) are the "model" implementation that compute the parameters
+
+(defn calc-mean
+  [col]
+  {:mean (fun/mean col)})
+
+(defn calc-naive
+  [col]
+  {:naive (last col)})
+
+(defn calc-snaive
+  [col seasonal-period]
+  {:snaive (take-last seasonal-period col)})
+
+(defn calc-drift
+  [col]
+  (let [yT (last col)
+        y1 (first col)
+        slope (/ (- yT y1) (count col))]
+    {:yT yT :slope slope}))
 
 
-(defn ts-prediction-model []
+;; predictions use the "model" parameters
+
+(defn predict-mean
+  [col model]
+  (repeat (tbl/row-count col) (get-in model [:model-mean :mean])))
+
+(defn predict-naive
+  [col model]
+  (repeat (tbl/row-count col) (get-in model [:model-naive :naive])))
+
+(defn- snaive-index
+  [T m]
+  (fn [h]
+    (let [k (quot (- h 1) m)
+          ix (- (+ T h) (* m (+ k 1)))]
+      (dec (+ ix m)))))
+
+(defn predict-snaive
+  [col model]
+  (let [T 0
+        m 4
+        idx (map (snaive-index T m) (map inc (range (count col))))
+        val (get-in model [:model-snaive :snaive])]
+    (map #(nth val %) idx)))
+
+
+(defn predict-drift
+  [col model]
+  (let [yT (get-in model [:model-drift :yT])
+        slope (float (get-in model [:model-drift :slope]))
+        n (count col)]
+     (map #(+ yT (/ (* slope (inc %)) n)) (range n))))
+
+
+;; calc & predict
+(predict-mean (test-data :Beer) {:model-mean (calc-mean (train-data :Beer))})
+
+(predict-naive (test-data :Beer) {:model-naive (calc-naive (train-data :Beer))})
+
+(predict-snaive (test-data :Beer) {:model-snaive (calc-snaive (train-data :Beer) 4)})
+
+(predict-drift (test-data :Beer) {:model-drift (calc-drift (train-data :Beer))})
+
+
+;; now for the metamorph pipeline
+(defn ts-forecast-model []
   (fn [{:metamorph/keys [id data mode] :as ctx}]
     (case mode
-      :fit (assoc ctx id {:mean (calc-mean data :Beer)
-                          :naive (calc-naive data :Beer)
-                          :snaive (calc-seasonal-naive data :Beer)
-                          :drift (calc-drift data :Beer)})
+      :fit (assoc ctx id {:model-mean (calc-mean (data :Beer))
+                          :model-naive (calc-naive (data :Beer))
+                          :model-snaive (calc-snaive (data :Beer) 4)
+                          :model-drift (calc-drift (data :Beer))})
 
-      :transform (assoc ctx id {:mean (:mean (:model ctx))
-                                :naive (:naive (:model ctx))}))))
+      :transform (assoc ctx id {:model-mean (predict-mean (data :Beer) (:model ctx)) 
+                                :model-naive (predict-naive (data :Beer) (:model ctx))
+                                :model-snaive (predict-snaive (data :Beer) (:model ctx))
+                                :model-drift (predict-drift (data :Beer) (:model ctx))}))))
 
 (def pipeline
   (ml/pipeline
    {:metamorph/id :model}
-   (ts-prediction-model)))
+   (ts-forecast-model)))
 
-;; returns a ctx
 (def training-run
   (pipeline
    {:metamorph/mode :fit
-    :metamorph/data data}))
+    :metamorph/data train-data}))
+
+(:model training-run)
 
 (def prediction-run
   (pipeline
-   (merge training-run {:metamorph/mode :transform})))
+   (merge training-run {:metamorph/mode :transform
+                        :metamorph/data test-data})))
 
-
-(keys training-run)
-(get training-run :model)
-
-(keys prediction-run)
-(get prediction-run :model)
+(:model prediction-run)
 
 
 
 
 
-;; (time-literals.read-write/print-time-literals-clj!)
 
-;
-; generate some sample data
-
-;; (defn time-index [start-inst n tf]
-;;   (datetime/plus-temporal-amount start-inst (range n) tf))
-
-;; (defn get-test-ds [start-time num-rows temporal-unit]
-;;   (tbl/dataset {:idx (time-index start-time num-rows temporal-unit)
-;;                 :value (take num-rows (repeatedly #(rand 200)))}))
-
-;; (get-test-ds #time/date "1970-01-01" 10 :days)
-;; => _unnamed [10 2]:
-;;    |        :idx |       :value |
-;;    |-------------|--------------|
-;;    |  1970-01-01 | 158.80935033 |
-;;    |  1970-01-02 |  68.70225457 |
-;;    |  1970-01-03 | 138.60236201 |
-;;    |  1970-01-04 | 165.35792971 |
-;;    |  1970-01-05 | 111.34070679 |
-;;    |  1970-01-06 |   3.26339136 |
-;;    |  1970-01-07 | 176.26695269 |
-;;    |  1970-01-08 |  62.31989768 |
-;;    |  1970-01-09 | 150.90881728 |
-;;    |  1970-01-10 |  35.81470956 |
-
-;; define a pipeline for naive time forecasting
-
-
-
-;; first we splite the data into test & training sets
-
-
-
-
-;; run the pipeline fn in :fit mode on the training data
-
-
-
-
-
-;; prediction step
