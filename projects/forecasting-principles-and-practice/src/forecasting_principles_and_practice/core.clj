@@ -61,12 +61,10 @@
                       (YearQuarter/parse "2009-Q4")))
 
 
-
 ;; We look at 4 "models" - mean, naive, seasonal-naive and drift
 ;; First, we compute the models, and then use it's parameters in prediction
 
-;; the calc(s) are the "model" implementation that compute the parameters
-
+;; calc(s) are the "model" implementation that compute the parameters
 (defn calc-mean
   [col]
   {:mean (fun/mean col)})
@@ -87,15 +85,14 @@
     {:yT yT :slope slope}))
 
 
-;; predictions use the "model" parameters
-
+;; predictions: use "model" parameters
 (defn predict-mean
   [col model]
-  (repeat (tbl/row-count col) (get-in model [:model-mean :mean])))
+  (repeat (tbl/row-count col) (:mean model)))
 
 (defn predict-naive
   [col model]
-  (repeat (tbl/row-count col) (get-in model [:model-naive :naive])))
+  (repeat (tbl/row-count col) (:naive model)))
 
 (defn- snaive-index
   [T m]
@@ -109,42 +106,40 @@
   (let [T 0
         m 4
         idx (map (snaive-index T m) (map inc (range (count col))))
-        val (get-in model [:model-snaive :snaive])]
+        val (:snaive model)]
     (map #(nth val %) idx)))
-
 
 (defn predict-drift
   [col model]
-  (let [yT (get-in model [:model-drift :yT])
-        slope (float (get-in model [:model-drift :slope]))
+  (let [yT (:yT model)
+        slope (float (:slope model))
         n (count col)]
      (map #(+ yT (/ (* slope (inc %)) n)) (range n))))
 
 
-;; calc & predict
-(predict-mean (test-data :Beer) {:model-mean (calc-mean (train-data :Beer))})
+;; calc & predict. verify this works before doing the pipeline
+(predict-mean (test-data :Beer) (calc-mean (train-data :Beer)))
 
-(predict-naive (test-data :Beer) {:model-naive (calc-naive (train-data :Beer))})
+(predict-naive (test-data :Beer) (calc-naive (train-data :Beer)))
 
-(predict-snaive (test-data :Beer) {:model-snaive (calc-snaive (train-data :Beer) 4)})
+(predict-snaive (test-data :Beer) (calc-snaive (train-data :Beer) 4))
 
-(predict-drift (test-data :Beer) {:model-drift (calc-drift (train-data :Beer))})
+(predict-drift (test-data :Beer) (calc-drift (train-data :Beer)))
 
 
 ;; now for the metamorph pipeline
 (defn ts-forecast-model []
   (fn [{:metamorph/keys [id data mode] :as ctx}]
     (case mode
-      :fit (assoc ctx id {:model-mean (calc-mean (data :Beer))
-                          :model-naive (calc-naive (data :Beer))
-                          :model-snaive (calc-snaive (data :Beer) 4)
-                          :model-drift (calc-drift (data :Beer))})
+      :fit (assoc ctx id {:model1 (calc-mean (data :Beer))
+                          :model2 (calc-naive (data :Beer))
+                          :model3 (calc-snaive (data :Beer) 4)
+                          :model4 (calc-drift (data :Beer))})
 
-      :transform (assoc ctx id {:model-mean (predict-mean (data :Beer) (:model ctx)) 
-                                :model-naive (predict-naive (data :Beer) (:model ctx))
-                                :model-snaive (predict-snaive (data :Beer) (:model ctx))
-                                :model-drift (predict-drift (data :Beer) (:model ctx))}))))
-
+      :transform (assoc ctx id {:model1 (predict-mean (data :Beer) (-> ctx :model :model1))
+                                :model2 (predict-naive (data :Beer) (-> ctx :model :model2))
+                                :model3 (predict-snaive (data :Beer) (-> ctx :model :model3))
+                                :model4 (predict-drift (data :Beer) (-> ctx :model :model4))}))))
 (def pipeline
   (ml/pipeline
    {:metamorph/id :model}
@@ -162,10 +157,7 @@
    (merge training-run {:metamorph/mode :transform
                         :metamorph/data test-data})))
 
+(keys prediction-run)
+
 (:model prediction-run)
-
-
-
-
-
 
