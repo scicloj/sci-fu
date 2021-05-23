@@ -33,20 +33,20 @@
 (import java.time.format.TextStyle)
 (import [org.threeten.extra YearQuarter])
 
-(require
- ;; '[scicloj.metamorph.core :as morph]
- ;; '[tech.v3.datatype.datetime :as datetime]
- ;; '[scicloj.ml.metamorph :as mm]
- ;; '[tablecloth.pipeline :as tbl-pipe]
- ;; '[tech.v3.libs.smile.metamorph :as smile]
- ;; '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
- ;; '[tech.v3.dataset.modelling :as ds-mod]
- ;; '[tech.v3.ml.metamorph :as ml-mm] ;; tech.ml support for metamorph
+;; (require
+;;  ;; '[scicloj.metamorph.core :as morph]
+;;  ;; '[tech.v3.datatype.datetime :as datetime]
+;;  ;; '[scicloj.ml.metamorph :as mm]
+;;  ;; '[tablecloth.pipeline :as tbl-pipe]
+;;  ;; '[tech.v3.libs.smile.metamorph :as smile]
+;;  ;; '[tech.v3.dataset.metamorph :as ds-mm] ;; tech.dataset support for metamorph
+;;  ;; '[tech.v3.dataset.modelling :as ds-mod]
+;;  ;; '[tech.v3.ml.metamorph :as ml-mm] ;; tech.ml support for metamorph
 
 
- ;; '[notespace.state :as state]
- ;; '[notespace.paths :as paths]
-)
+;;  ;; '[notespace.state :as state]
+;;  ;; '[notespace.paths :as paths]
+;; )
 
 ^kind/hidden
 (comment
