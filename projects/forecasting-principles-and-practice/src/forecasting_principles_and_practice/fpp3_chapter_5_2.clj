@@ -1,4 +1,4 @@
-(ns forecasting-principles-and-practice.core
+(ns forecasting-principles-and-practice.fpp3-chapter-5-2
   (:require
    [clojure.data.json :as json]
    [clojure.java.io :as io]
