@@ -1,4 +1,4 @@
-(ns forecasting-principles-and-practice.core
+(ns forecasting-principles-and-practice.fpp3_chapter_5_2
   (:require
    [clojure.data.json :as json]
    [clojure.java.io :as io]
@@ -28,12 +28,13 @@
 ))
             
 
-(import java.time.LocalDate)
+#_(import java.time.LocalDate)
 (import java.util.Locale)
 (import java.time.format.TextStyle)
 (import [org.threeten.extra YearQuarter])
 
-(require
+(comment
+  require
  ;; '[scicloj.metamorph.core :as morph]
  ;; '[tech.v3.datatype.datetime :as datetime]
  ;; '[scicloj.ml.metamorph :as mm]
@@ -46,7 +47,8 @@
 
  ;; '[notespace.state :as state]
  ;; '[notespace.paths :as paths]
-)
+  )
+
 
 ^kind/hidden
 (comment
@@ -183,8 +185,9 @@
 (defn prep-data-for-plotting [data]
   (-> data
       (tbl/select-columns [:QuarterEnd :Beer :Cement])
-      (tds/column-cast :QuarterEnd :string)
-      (ds/rows :as-maps)))
+      (tbl/convert-types :QuarterEnd :string)
+      #_(tds/column-cast :QuarterEnd :string)
+      (tbl/rows :as-maps)))
 
 (def plotdata (-> data prep-data-for-plotting))
 
@@ -208,23 +211,6 @@
     prep-data-for-plotting
     (plot ht/point-chart :X :QuarterEnd :XTYPE :temporal :Y :Beer))
 
-;; now for a layer chart
-^kind/vega
-(hc/xform
- ht/layer-chart
- :DATA plotdata
- :LAYER [(hc/xform
-          ht/line-chart
-          :X :QuarterEnd
-          :XTYPE :temporal
-          :Y :Beer)
-         (hc/xform
-          ht/point-chart
-          :X :QuarterEnd
-          :XTYPE :temporal
-          :Y :Cement)])
-
-;; TODO: extend plot method to support layer charts
 
 ;; now for the google example
 (def gafadata (-> (ds/dataset "./data/gafa-stock.csv" {:key-fn keyword})))
@@ -260,11 +246,11 @@ goog-test-data
 
 ;; verify fit/prediction works for this dataset out of the box
 ;; note only 3 models as snaive is not applicable
-(predict-mean (goog-test-data :Close) (calc-mean (goog-train-data :Close)))
+(predict-mean (goog-test-data :Adj_Close) (calc-mean (goog-train-data :Adj_Close)))
 
-(predict-naive (goog-test-data :Close) (calc-naive (goog-train-data :Close)))
+(predict-naive (goog-test-data :Adj_Close) (calc-naive (goog-train-data :Adj_Close)))
 
-(predict-drift (goog-test-data :Close) (calc-drift (goog-train-data :Close)))
+(predict-drift (goog-test-data :Adj_Close) (calc-drift (goog-train-data :Adj_Close)))
 
 
 ;; note. We need this only because we need 3 instead of 4 models.
@@ -272,13 +258,13 @@ goog-test-data
 (defn goog-forecast-model []
   (fn [{:metamorph/keys [id data mode] :as ctx}]
     (case mode
-      :fit (assoc ctx id {:model1 (calc-mean (data :Close))
-                          :model2 (calc-naive (data :Close))
-                          :model4 (calc-drift (data :Close))})
+      :fit (assoc ctx id {:model1 (calc-mean (data :Adj_Close))
+                          :model2 (calc-naive (data :Adj_Close))
+                          :model4 (calc-drift (data :Adj_Close))})
 
-      :transform (assoc ctx :metamorph/data {:model1 (predict-mean (data :Close) (-> ctx :model :model1))
-                                             :model2 (predict-naive (data :Close) (-> ctx :model :model2))
-                                             :model4 (predict-drift (data :Close) (-> ctx :model :model4))}))))
+      :transform (assoc ctx :metamorph/data {:model1 (predict-mean (data :Adj_Close) (-> ctx :model :model1))
+                                             :model2 (predict-naive (data :Adj_Close) (-> ctx :model :model2))
+                                             :model4 (predict-drift (data :Adj_Close) (-> ctx :model :model4))}))))
 
 (def goog-pipeline
   (ml/pipeline
@@ -297,11 +283,17 @@ goog-test-data
 
 (:metamorph/data goog-prediction-run) ;; results for all 4 models
 
+(defn goog_prep-data-for-plotting [data]
+  (-> data
+      (tbl/select-columns [:Date :Adj_Close])
+      (tbl/convert-types :Date :string)
+      #_(tds/column-cast :Date :string)
+      (tbl/rows :as-maps)))
 
 ;; plot goog data set
-(-> data
-    prep-data-for-plotting
-    (plot ht/point-chart :X :Date :XTYPE :temporal :Y :Close))
+(-> gafadata
+    goog_prep-data-for-plotting
+    (plot ht/point-chart :X :Date :XTYPE :temporal :Y :Adj_Close))
 
 
 
