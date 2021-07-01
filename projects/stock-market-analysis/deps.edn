@@ -1,0 +1,8 @@
+{:paths ["src" "resources"]
+ :deps {
+        org.clojure/clojure {:mvn/version "1.10.2"}
+        time-literals/time-literals {:mvn/version "0.1.5"}
+        scicloj/tablecloth {:mvn/version "6.0002"}
+        org.scicloj/tablecloth.time {:mvn/version "1.00-alpha-3"}
+        scicloj/notespace {:mvn/version "3-beta5"}
+}}
