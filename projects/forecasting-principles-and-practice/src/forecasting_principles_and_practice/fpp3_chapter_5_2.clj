@@ -1,7 +1,5 @@
 (ns forecasting-principles-and-practice.fpp3_chapter_5_2
   (:require
-   [clojure.data.json :as json]
-   [clojure.java.io :as io]
    [clojure.string :refer [replace join]]
 
    [time-literals.data-readers]
@@ -10,17 +8,13 @@
    [tech.v3.datatype :as dtype]
    [tech.v3.datatype.casting :as casting]
    [tech.v3.datatype.functional :as fun]
-   [tech.v3.dataset :as tds]
-   
-   [scicloj.ml.core :as ml]
-   [scicloj.ml.dataset :as ds]
    
    [tablecloth.api :as tbl]
    [tablecloth.time.index :as idx]
    [tablecloth.time.api :refer [slice]]
 
-   [aerial.hanami.common :as hc]
-   [aerial.hanami.templates :as ht]
+   ;; [aerial.hanami.common :as hc]
+   ;; [aerial.hanami.templates :as ht]
    ;; [aerial.hanami.core :as hmi]
             
    [notespace.api :as notespace]
@@ -29,8 +23,8 @@
             
 
 #_(import java.time.LocalDate)
-(import java.util.Locale)
-(import java.time.format.TextStyle)
+#_(import java.util.Locale)
+#_(import java.time.format.TextStyle)
 (import [org.threeten.extra YearQuarter])
 
 (comment
@@ -60,31 +54,54 @@
 (casting/add-object-datatype! :year-quarter YearQuarter true)
 
 ;; data
-(def data (-> (ds/dataset "./data/aus-production.csv"
-                          {:key-fn    keyword
-                           :parser-fn {"Quarter" [:year-quarter
-                                                  (fn [date-str]
-                                                    (-> date-str
-                                                        (replace #" " "-")
-                                                        (YearQuarter/parse)))]}})
-              (ds/add-or-replace-column :QuarterEnd
-                                        #(dtype/emap (fn [x] (.atEndOfQuarter x)) :local-date (:Quarter %)))))
+(def ausdata 
+  (-> "./data/aus-production.csv"
+      
+      (tbl/dataset {:dataset-name "aus-production"
+                    :key-fn keyword
+                    :parser-fn {"Quarter" [:year-quarter
+                                           (fn [date-str]
+                                             (-> date-str
+                                                 (replace #" " "-")
+                                                 (YearQuarter/parse)))]}})
+      
+      ;; new column :QuarterEnd which is the last date of the :Quarter in localdate
+      (tbl/add-or-replace-column :QuarterEnd
+                                 #(dtype/emap (fn [x] (.atEndOfQuarter x)) :local-date (:Quarter %)))
 
-(def indexed-data (idx/index-by data :Quarter))
 
-(def train-data (slice indexed-data
+      ;; indexed
+      (idx/index-by :Quarter)))
+
+
+(def train-ausdata (slice ausdata
                        (YearQuarter/parse "1992-Q1")
                        (YearQuarter/parse "2006-Q4")))
 
-(def test-data (slice indexed-data
+(def test-ausdata (slice ausdata
                       (YearQuarter/parse "2007-Q1")
                       (YearQuarter/parse "2009-Q4")))
 
 
-;; We look at 4 "models" - mean, naive, seasonal-naive and drift
-;; First, we compute the models, and then use it's parameters in prediction
+(meta ausdata)
+(meta train-ausdata)
+(meta test-ausdata)
 
-;; calc(s) are the "model" implementation that compute the parameters
+
+;; We look at 4 simple "models" thar are usedin the book
+;;   - mean, naive, seasonal-naive and drift
+;; So, we define these models, and then use it in prediction
+
+;; a model in this example is really simple and how it is used in the prediction
+;; We do this using two seperate approaches
+;;   1. use model and predcition functions to directly compute and predict
+;;   2. wrap model and prediction functions in a pipeline function
+
+
+;; calc(s) are the "model" implementations
+;; they compute and return the model specific parameters
+;; here, all calc functions return a dictionary
+
 (defn calc-mean
   [col]
   {:mean (fun/mean col)})
@@ -108,13 +125,13 @@
 ;; predictions: using "model" parameters
 (defn predict-mean
   [col model]
-  (repeat (tbl/row-count col) (:mean model)))
+  (vec (repeat (tbl/row-count col) (:mean model))))
 
 (defn predict-naive
   [col model]
-  (repeat (tbl/row-count col) (:naive model)))
+  (vec (repeat (tbl/row-count col) (:naive model))))
 
-;; helper to calculate the seasonal index. see book
+;; helper to calculate the seasonal index. see book for the formula
 (defn- snaive-index
   [T m]
   (fn [h]
@@ -128,178 +145,100 @@
         m 4
         idx (map (snaive-index T m) (map inc (range (count col))))
         val (:snaive model)]
-    (map #(nth val %) idx)))
+    (vec (map #(nth val %) idx))))
 
 (defn predict-drift
   [col model]
   (let [yT (:yT model)
         slope (float (:slope model))
         n (count col)]
-     (map #(+ yT (/ (* slope (inc %)) n)) (range n))))
+    (vec (map #(+ yT (/ (* slope (inc %)) n)) (range n)))))
 
 
-;; calc model & predict.
-;; verify this works before doing the pipeline
-(predict-mean (test-data :Beer) (calc-mean (train-data :Beer)))
+(predict-mean (test-ausdata :Beer)
+              (calc-mean (train-ausdata :Beer)))
 
-(predict-naive (test-data :Beer) (calc-naive (train-data :Beer)))
+(predict-naive (test-ausdata :Beer)
+               (calc-naive (train-ausdata :Beer)))
 
-(predict-snaive (test-data :Beer) (calc-snaive (train-data :Beer) 4))
+(predict-snaive (test-ausdata :Beer)
+                (calc-snaive (train-ausdata :Beer) 4))
 
-(predict-drift (test-data :Beer) (calc-drift (train-data :Beer)))
+(predict-drift (test-ausdata :Beer)
+               (calc-drift (train-ausdata :Beer)))
 
+;; R-lang augment approach
+;; data <- data(...)
+;; model <- model(...)
+;; wf <- workflow(model, ...)
+;; fit <- fit(wf, data)
+;; augmented_data <- augment(fit, data) 
 
-;; now for the metamorph pipeline
-(defn ts-forecast-model []
-  (fn [{:metamorph/keys [id data mode] :as ctx}]
-    (case mode
-      :fit (assoc ctx id {:model1 (calc-mean (data :Beer))
-                          :model2 (calc-naive (data :Beer))
-                          :model3 (calc-snaive (data :Beer) 4)
-                          :model4 (calc-drift (data :Beer))})
-
-      :transform (assoc ctx :metamorph/data {:model1 (predict-mean (data :Beer) (-> ctx :model :model1))
-                                             :model2 (predict-naive (data :Beer) (-> ctx :model :model2))
-                                             :model3 (predict-snaive (data :Beer) (-> ctx :model :model3))
-                                             :model4 (predict-drift (data :Beer) (-> ctx :model :model4))}))))
-
-(def pipeline
-  (ml/pipeline
-   {:metamorph/id :model}
-   (ts-forecast-model)))
-
-(def training-run
-  (pipeline
-   {:metamorph/mode :fit
-    :metamorph/data train-data}))
-
-(def prediction-run
-  (pipeline
-   (merge training-run {:metamorph/mode :transform
-                        :metamorph/data test-data})))
-
-(:metamorph/data prediction-run) ;; results for all 4 models
-
-;; plotting
-
-(defn prep-data-for-plotting [data]
-  (-> data
-      (tbl/select-columns [:QuarterEnd :Beer :Cement])
-      (tbl/convert-types :QuarterEnd :string)
-      #_(tds/column-cast :QuarterEnd :string)
-      (tbl/rows :as-maps)))
-
-(def plotdata (-> data prep-data-for-plotting))
-
-(first plotdata)
-
-;; plot QuarterEnd vs Beer using hanami directly
-^kind/vega
-(hc/xform
- ht/line-chart
- :DATA plotdata
- :X :QuarterEnd
- :XTYPE :temporal
- :Y :Beer)
-
-(defn plot
-  [ds template & subs]
-  (kind/override (apply hc/xform template :DATA ds subs) kind/vega))
-
-;; plot QuarterEnd vs Beer using function to generate the hanami specs
-(-> data
-    prep-data-for-plotting
-    (plot ht/point-chart :X :QuarterEnd :XTYPE :temporal :Y :Beer))
+;; proposed augment approach
+;; (augment ds predictions)
+;; (-> ds
+;;     (augment predictions)
+;;     residuals
+;;     ...)
 
 
-;; now for the google example
-(def gafadata (-> (ds/dataset "./data/gafa-stock.csv" {:key-fn keyword})))
-
-(defn ->year
-  [ldate]
-  (.getYear ldate))
-
-(defn ->year-month
-  [ldate]
-  (let [yyyy (.getYear ldate)
-        mmm (-> (.getMonth ldate)
-                (.getDisplayName TextStyle/SHORT (Locale/getDefault)))]
-    [yyyy mmm]))
+;; proposed augment approach
+;;  - allow multiple models
+;; (augment ds predictions)
+;; (-> ds
+;;     (augment predictions1)
+;;     (augment predictions2)
+;;     residuals
+;;     ...)
 
 
-(def goog-train-data
-  (-> gafadata
-      (tbl/select-rows (comp #(= % 2015) ->year :Date))
-      (tbl/select-rows (comp #(= % "GOOG") :Symbol))))
+(defn augment-simple
+  [ds col-name col-data]
+  (-> ds
+      (tbl/add-column col-name col-data)))
+
+(defn- drop-col-name
+  [ds col-name]
+  (keyword (str (tbl/dataset-name ds) "." (name col-name))))
+
+(defn augment-match
+  [ds-left ds-right match]
+  (let [drop-col (drop-col-name ds-left match)]
+    (-> ds-left
+        (tbl/left-join ds-right match)
+        (tbl/drop-columns drop-col))))
 
 
-(def goog-test-data
-  (-> gafadata
-      (tbl/select-rows (comp #(= % "2016 Jan") #(join " " (->year-month %)) :Date))
-      (tbl/select-rows (comp #(= % "GOOG") :Symbol))))
+;; (def c1 (calc-mean (train-ausdata :Beer)))
+;; (def p-c1 (predict-mean (test-ausdata :Beer) c1))
+
+;; (def aug-test-ausdata (augment-simple test-ausdata :Beer-fit p-c1))
+
+;; (def aug-data-ausdata
+;;   (augment-match ausdata (tbl/select-columns aug-test-ausdata [:column-0 :Beer-fit]) :column-0))
+
+;; ^kind/dataset
+;; aug-data-ausdata
+
+(def model-mean (calc-mean (train-ausdata :Beer)))
+(def model-naive (calc-naive (train-ausdata :Beer)))
+(def model-snaive (calc-snaive (train-ausdata :Beer) 4))
+(def model-drift (calc-drift (train-ausdata :Beer)))
+
+(def forecast-mean (predict-mean (test-ausdata :Beer) model-mean))
+(def forecast-naive (predict-naive (test-ausdata :Beer) model-naive))
+(def forecast-snaive (predict-snaive (test-ausdata :Beer) model-snaive))
+(def forecast-drift (predict-drift (test-ausdata :Beer) model-drift))
+
+(def augment-mean (augment-simple test-ausdata :Beer-mean forecast-mean))
+(def augment-naive (augment-simple test-ausdata :Beer-naive forecast-naive))
+(def augment-snaive (augment-simple test-ausdata :Beer-snaive forecast-snaive))
+(def augment-drift (augment-simple test-ausdata :Beer-drift forecast-drift))
 
 ^kind/dataset
-goog-train-data
-
-^kind/dataset
-goog-test-data
-
-;; verify fit/prediction works for this dataset out of the box
-;; note only 3 models as snaive is not applicable
-(predict-mean (goog-test-data :Adj_Close) (calc-mean (goog-train-data :Adj_Close)))
-
-(predict-naive (goog-test-data :Adj_Close) (calc-naive (goog-train-data :Adj_Close)))
-
-(predict-drift (goog-test-data :Adj_Close) (calc-drift (goog-train-data :Adj_Close)))
-
-
-;; note. We need this only because we need 3 instead of 4 models.
-;; otherwise we can reuse the earlier model and pipe line as is, and switch only the train/test data
-(defn goog-forecast-model []
-  (fn [{:metamorph/keys [id data mode] :as ctx}]
-    (case mode
-      :fit (assoc ctx id {:model1 (calc-mean (data :Adj_Close))
-                          :model2 (calc-naive (data :Adj_Close))
-                          :model4 (calc-drift (data :Adj_Close))})
-
-      :transform (assoc ctx :metamorph/data {:model1 (predict-mean (data :Adj_Close) (-> ctx :model :model1))
-                                             :model2 (predict-naive (data :Adj_Close) (-> ctx :model :model2))
-                                             :model4 (predict-drift (data :Adj_Close) (-> ctx :model :model4))}))))
-
-(def goog-pipeline
-  (ml/pipeline
-   {:metamorph/id :model}
-   (goog-forecast-model)))
-
-(def goog-training-run
-  (goog-pipeline
-   {:metamorph/mode :fit
-    :metamorph/data goog-train-data}))
-
-(def goog-prediction-run
-  (goog-pipeline
-   (merge goog-training-run {:metamorph/mode :transform
-                             :metamorph/data goog-test-data})))
-
-(:metamorph/data goog-prediction-run) ;; results for all 4 models
-
-(defn goog_prep-data-for-plotting [data]
-  (-> data
-      (tbl/select-columns [:Date :Adj_Close])
-      (tbl/convert-types :Date :string)
-      #_(tds/column-cast :Date :string)
-      (tbl/rows :as-maps)))
-
-;; plot goog data set
-(-> gafadata
-    goog_prep-data-for-plotting
-    (plot ht/point-chart :X :Date :XTYPE :temporal :Y :Adj_Close))
-
-
-
-
-
-
-
-
+(-> ausdata
+    (augment-match (tbl/select-columns augment-mean [:column-0 :Beer-mean]) :column-0)
+    (augment-match (tbl/select-columns augment-naive [:column-0 :Beer-naive]) :column-0)
+    (augment-match (tbl/select-columns augment-snaive [:column-0 :Beer-snaive]) :column-0)
+    (augment-match (tbl/select-columns augment-drift [:column-0 :Beer-drift]) :column-0))
 

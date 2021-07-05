@@ -1,12 +1,15 @@
 {:paths ["src" "resources"]
  :deps {
-        org.clojure/clojure {:mvn/version "1.10.2"}
+        org.clojure/clojure {:mvn/version "1.10.3"}
         time-literals/time-literals {:mvn/version "0.1.5"}
         
-        scicloj/scicloj.ml {:mvn/version "0.1.0-beta1"}
-        scicloj/notespace {:mvn/version "3-beta5"}
+        scicloj/scicloj.ml {:mvn/version "0.1.0-beta3"}
+        scicloj/notespace {:mvn/version "3-beta7"}
 
+        ;; org.scicloj/tablecloth.time {:mvn/version "1.00-alpha-2"}
         scicloj/tablecloth.time {:local/root "../../../tablecloth.time"}
 
-        org.threeten/threeten-extra {:mvn/version "1.5.0"}
+        aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
+        
+        org.threeten/threeten-extra {:mvn/version "1.6.0"}
 }}
