@@ -1,0 +1,4 @@
+{:deps
+ {org.clojure/clojure {:mvn/version "1.10.2"}
+  scicloj/tablecloth.time {:local/root "../../../tablecloth.time"}
+  scicloj/notespace {:mvn/version "3-beta5"}}}
