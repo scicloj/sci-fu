@@ -84,7 +84,9 @@
 
 
 (meta ausdata)
+
 (meta train-ausdata)
+
 (meta test-ausdata)
 
 
@@ -173,72 +175,43 @@
 (fit-drift (test-ausdata :Beer)
                (model-drift (train-ausdata :Beer)))
 
-;; R-lang augment approach
-;; data <- data(...)
-;; model <- model(...)
-;; wf <- workflow(model, ...)
-;; fit <- fit(wf, data)
-;; augmented_data <- augment(fit, data) 
-
-(defn augment-simple
-  [ds col-name col-data]
-  (-> ds
-      (tbl/add-column col-name col-data)))
-
-;; (defn- drop-col-name
-;;   [ds col-name]
-;;   (keyword (str (tbl/dataset-name ds) "." (name col-name))))
-
-;; (defn augment-match
-;;   [ds-left ds-right match]
-;;   (let [drop-col (drop-col-name ds-left match)]
-;;     (-> ds-left
-;;         (tbl/left-join ds-right match)
-;;         (tbl/drop-columns drop-col))))
-
 (defn residuals
-  [y y-hat]
-  (dfn/- y y-hat))
+  [ds y y-hat]
+  (dfn/- (ds y) (ds y-hat)))
 
-(def fit-mean-data 
-  (->> (train-ausdata :Beer)
-       model-mean
-       (fit-mean (test-ausdata :Beer))
-       (augment-simple test-ausdata :Beer.mean.fitted)
-       (#(augment-simple % :Beer.mean.residuals (residuals (% :Beer) (% :Beer.mean.fitted))))))
+;; a simple workflow
+;; simple because it is tailor made to what we are doing here
+;; workflow is
+;;  1. model
+;;  2. fit
+;;  3. merge fit values to test data
+;;  4. compute residuals from #3 and merge it to #3
 
-^kind/dataset
-fit-mean-data
-
-(def fit-naive-data 
-  (->> (train-ausdata :Beer)
-       model-naive
-       (fit-naive (test-ausdata :Beer))
-       (augment-simple test-ausdata :Beer.naive.fitted)
-       (#(augment-simple % :Beer.naive.residuals (residuals (% :Beer) (% :Beer.naive.fitted))))))
-
-^kind/dataset
-fit-naive-data
-
-(def fit-snaive-data 
-  (->> (train-ausdata :Beer)
-       model-snaive 
-       (fit-snaive (test-ausdata :Beer))
-       (augment-simple test-ausdata :Beer.snaive.fitted)
-       (#(augment-simple % :Beer.snaive.residuals (residuals (% :Beer) (% :Beer.snaive.fitted))))))
+(defn simple-workflow
+  [train-ds test-ds model fit col-name]
+  (let [train-data (train-ds col-name)
+        test-data (test-ds col-name)
+        col-name-fitted (str col-name ".fitted")
+        col-name-residuals (str col-name-fitted ".residuals")]
+    
+    (->> train-data
+         model
+         (fit test-data)
+         (#(tbl/add-column test-ds col-name-fitted %))
+         (#(tbl/add-column % col-name-residuals (residuals % col-name col-name-fitted))))))
 
 ^kind/dataset
-fit-snaive-data
-
-(def fit-drift-data 
-  (->> (train-ausdata :Beer)
-       model-drift
-       (fit-drift (test-ausdata :Beer))
-       (augment-simple test-ausdata :Beer.drift.fitted)
-       (#(augment-simple % :Beer.drift.residuals (residuals (% :Beer) (% :Beer.drift.fitted))))))
+(simple-workflow train-ausdata test-ausdata model-mean fit-mean :Beer)
 
 ^kind/dataset
-fit-drift-data
+(simple-workflow train-ausdata test-ausdata model-naive fit-naive :Beer)
+
+^kind/dataset
+(simple-workflow train-ausdata test-ausdata model-snaive fit-snaive :Beer)
+
+^kind/dataset
+(simple-workflow train-ausdata test-ausdata model-drift fit-drift :Beer)
+
 
 ;; TODO:
 
