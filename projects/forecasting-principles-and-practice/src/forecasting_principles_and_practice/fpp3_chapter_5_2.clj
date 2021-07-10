@@ -7,7 +7,7 @@
 
    [tech.v3.datatype :as dtype]
    [tech.v3.datatype.casting :as casting]
-   [tech.v3.datatype.functional :as fun]
+   [tech.v3.datatype.functional :as dfn]
    
    [tablecloth.api :as tbl]
    [tablecloth.time.index :as idx]
@@ -102,19 +102,22 @@
 ;; they compute and return the model specific parameters
 ;; here, all calc functions return a dictionary
 
-(defn calc-mean
+(defn model-mean
   [col]
   {:mean (fun/mean col)})
 
-(defn calc-naive
+(defn model-naive
   [col]
   {:naive (last col)})
 
-(defn calc-snaive
-  [col seasonal-period]
-  {:snaive (take-last seasonal-period col)})
 
-(defn calc-drift
+(defn model-snaive-fn
+  [seasonal-period]
+  (fn [col] 
+    {:snaive (take-last seasonal-period col)}))
+
+
+(defn model-drift
   [col]
   (let [yT (last col)
         y1 (first col)
@@ -123,11 +126,11 @@
 
 
 ;; predictions: using "model" parameters
-(defn predict-mean
+(defn fit-mean
   [col model]
   (vec (repeat (tbl/row-count col) (:mean model))))
 
-(defn predict-naive
+(defn fit-naive
   [col model]
   (vec (repeat (tbl/row-count col) (:naive model))))
 
@@ -139,7 +142,7 @@
           ix (- (+ T h) (* m (+ k 1)))]
       (dec (+ ix m)))))
 
-(defn predict-snaive
+(defn fit-snaive
   [col model]
   (let [T 0
         m 4
@@ -147,7 +150,7 @@
         val (:snaive model)]
     (vec (map #(nth val %) idx))))
 
-(defn predict-drift
+(defn fit-drift
   [col model]
   (let [yT (:yT model)
         slope (float (:slope model))
@@ -155,17 +158,20 @@
     (vec (map #(+ yT (/ (* slope (inc %)) n)) (range n)))))
 
 
-(predict-mean (test-ausdata :Beer)
-              (calc-mean (train-ausdata :Beer)))
+(def model-snaive
+  (model-snaive-fn 4))
 
-(predict-naive (test-ausdata :Beer)
-               (calc-naive (train-ausdata :Beer)))
+(fit-mean (test-ausdata :Beer)
+              (model-mean (train-ausdata :Beer)))
 
-(predict-snaive (test-ausdata :Beer)
-                (calc-snaive (train-ausdata :Beer) 4))
+(fit-naive (test-ausdata :Beer)
+               (model-naive (train-ausdata :Beer)))
 
-(predict-drift (test-ausdata :Beer)
-               (calc-drift (train-ausdata :Beer)))
+(fit-snaive (test-ausdata :Beer)
+                (model-snaive (train-ausdata :Beer)))
+
+(fit-drift (test-ausdata :Beer)
+               (model-drift (train-ausdata :Beer)))
 
 ;; R-lang augment approach
 ;; data <- data(...)
@@ -174,71 +180,85 @@
 ;; fit <- fit(wf, data)
 ;; augmented_data <- augment(fit, data) 
 
-;; proposed augment approach
-;; (augment ds predictions)
-;; (-> ds
-;;     (augment predictions)
-;;     residuals
-;;     ...)
-
-
-;; proposed augment approach
-;;  - allow multiple models
-;; (augment ds predictions)
-;; (-> ds
-;;     (augment predictions1)
-;;     (augment predictions2)
-;;     residuals
-;;     ...)
-
-
 (defn augment-simple
   [ds col-name col-data]
   (-> ds
       (tbl/add-column col-name col-data)))
 
-(defn- drop-col-name
-  [ds col-name]
-  (keyword (str (tbl/dataset-name ds) "." (name col-name))))
+;; (defn- drop-col-name
+;;   [ds col-name]
+;;   (keyword (str (tbl/dataset-name ds) "." (name col-name))))
 
-(defn augment-match
-  [ds-left ds-right match]
-  (let [drop-col (drop-col-name ds-left match)]
-    (-> ds-left
-        (tbl/left-join ds-right match)
-        (tbl/drop-columns drop-col))))
+;; (defn augment-match
+;;   [ds-left ds-right match]
+;;   (let [drop-col (drop-col-name ds-left match)]
+;;     (-> ds-left
+;;         (tbl/left-join ds-right match)
+;;         (tbl/drop-columns drop-col))))
 
+(defn residuals
+  [y y-hat]
+  (dfn/- y y-hat))
 
-;; (def c1 (calc-mean (train-ausdata :Beer)))
-;; (def p-c1 (predict-mean (test-ausdata :Beer) c1))
-
-;; (def aug-test-ausdata (augment-simple test-ausdata :Beer-fit p-c1))
-
-;; (def aug-data-ausdata
-;;   (augment-match ausdata (tbl/select-columns aug-test-ausdata [:column-0 :Beer-fit]) :column-0))
-
-;; ^kind/dataset
-;; aug-data-ausdata
-
-(def model-mean (calc-mean (train-ausdata :Beer)))
-(def model-naive (calc-naive (train-ausdata :Beer)))
-(def model-snaive (calc-snaive (train-ausdata :Beer) 4))
-(def model-drift (calc-drift (train-ausdata :Beer)))
-
-(def forecast-mean (predict-mean (test-ausdata :Beer) model-mean))
-(def forecast-naive (predict-naive (test-ausdata :Beer) model-naive))
-(def forecast-snaive (predict-snaive (test-ausdata :Beer) model-snaive))
-(def forecast-drift (predict-drift (test-ausdata :Beer) model-drift))
-
-(def augment-mean (augment-simple test-ausdata :Beer-mean forecast-mean))
-(def augment-naive (augment-simple test-ausdata :Beer-naive forecast-naive))
-(def augment-snaive (augment-simple test-ausdata :Beer-snaive forecast-snaive))
-(def augment-drift (augment-simple test-ausdata :Beer-drift forecast-drift))
+(def fit-mean-data 
+  (->> (train-ausdata :Beer)
+       model-mean
+       (fit-mean (test-ausdata :Beer))
+       (augment-simple test-ausdata :Beer.mean.fitted)
+       (#(augment-simple % :Beer.mean.residuals (residuals (% :Beer) (% :Beer.mean.fitted))))))
 
 ^kind/dataset
-(-> ausdata
-    (augment-match (tbl/select-columns augment-mean [:column-0 :Beer-mean]) :column-0)
-    (augment-match (tbl/select-columns augment-naive [:column-0 :Beer-naive]) :column-0)
-    (augment-match (tbl/select-columns augment-snaive [:column-0 :Beer-snaive]) :column-0)
-    (augment-match (tbl/select-columns augment-drift [:column-0 :Beer-drift]) :column-0))
+fit-mean-data
+
+(def fit-naive-data 
+  (->> (train-ausdata :Beer)
+       model-naive
+       (fit-naive (test-ausdata :Beer))
+       (augment-simple test-ausdata :Beer.naive.fitted)
+       (#(augment-simple % :Beer.naive.residuals (residuals (% :Beer) (% :Beer.naive.fitted))))))
+
+^kind/dataset
+fit-naive-data
+
+(def fit-snaive-data 
+  (->> (train-ausdata :Beer)
+       model-snaive 
+       (fit-snaive (test-ausdata :Beer))
+       (augment-simple test-ausdata :Beer.snaive.fitted)
+       (#(augment-simple % :Beer.snaive.residuals (residuals (% :Beer) (% :Beer.snaive.fitted))))))
+
+^kind/dataset
+fit-snaive-data
+
+(def fit-drift-data 
+  (->> (train-ausdata :Beer)
+       model-drift
+       (fit-drift (test-ausdata :Beer))
+       (augment-simple test-ausdata :Beer.drift.fitted)
+       (#(augment-simple % :Beer.drift.residuals (residuals (% :Beer) (% :Beer.drift.fitted))))))
+
+^kind/dataset
+fit-drift-data
+
+;; TODO:
+
+;; Plot #1
+;; append train data, with test data. test data will have additional fitted/residual columns
+;; plot X - temporal - :QuarterEnd         (from train-ausdata, test-ausdata)
+;; plot Y - data - :Beer                   (from train-ausdata, test-ausdat)
+;; plot Y - data - :Beer.mean.fitted       (from fit-mean-data)
+;; plot Y - data - :Beer.naive.fitted      (from fit-naive-data)
+;; plot Y - data - :Beer.snaive.fitted     (from fit-snaive-data)
+;; plot Y - data - :Beer.drift.fitted      (from fit-drift-data)
+
+;; Plot #2
+;; plot X - temporal - :QuarterEnd         (from test-ausdata)
+;; plot Y - data - :Beer.mean.resiual      (from fit-mean-data)
+;; plot Y - data - :Beer.naive.residual    (from fit-naive-data)
+;; plot Y - data - :Beer.snaive.residual   (from fit-snaive-data)
+;; plot Y - data - :Beer.drift.residual    (from fit-drift-data)
+
+
+
+
 
