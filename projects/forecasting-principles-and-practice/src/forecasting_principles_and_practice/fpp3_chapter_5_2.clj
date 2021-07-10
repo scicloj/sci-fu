@@ -104,7 +104,7 @@
 
 (defn model-mean
   [col]
-  {:mean (fun/mean col)})
+  {:mean (dfn/mean col)})
 
 (defn model-naive
   [col]
