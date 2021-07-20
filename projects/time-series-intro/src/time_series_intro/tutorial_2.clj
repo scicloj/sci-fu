@@ -131,10 +131,11 @@ data-with-regression-degree2
 (def rossmann-raw (tbl/dataset "data/rossmann.csv"
                                {:key-fn keyword}))
 
+
 ^kind/dataset
 rossmann-raw
 
-(tbl/info rossman-raw)
+(tbl/info rossmann-raw)
 
 (defn ->year [local-date]
   (time/convert-to local-date :year))
@@ -171,6 +172,9 @@ rossmann-data
   (assoc ht/view-base
          :mark (merge ht/mark-base {:type "boxplot"})))
 
+^kind/md-nocode
+["#### How to sales different on days when there are promotions?"]
+
 ^kind/vega
 (hc/xform
  boxplot
@@ -180,4 +184,55 @@ rossmann-data
  :X :Promo :XTYPE :ordinal
  :Y :Sales :YTPE :quantitative :YSCALE {:zero false})
 
+^kind/md-nocode
+["#### How to sales diff by day of week?"]
 
+^kind/vega
+(hc/xform
+ boxplot
+ :DATA (-> rossman-data-store-1
+           (tbl/select-columns [:DayOfWeek :Sales])
+           (tbl/rows :as-maps))
+ :X :DayOfWeek :XTYPE :ordinal
+ :Y :Sales :YTYPE :quantitative :YSCALE {:zero false})
+
+^kind/vega
+(hc/xform
+ ht/line-chart
+ :DATA (-> rossman-data-store-1
+           (tbl/select-columns [:Date :Sales])
+           (tbl/convert-types :Date :string)
+           (tbl/rows :as-maps))
+ :X :Date :XTYPE :temporal
+ :Y :Sales :YSCALE {:zero false})
+
+^kind/vega
+(hc/xform
+ ht/line-chart
+ :DATA (-> rossman-data-store-1
+           (time/slice "2015-01-01" "2015-12-31")
+           (tbl/select-columns [:Date :Sales])
+           (tbl/convert-types :Date :string)
+           (tbl/rows :as-maps))
+ :WIDTH 600
+ :X :Date :XTYPE :temporal
+ :Y :Sales :YSCALE {:zero false})
+
+^kind/md-nocode
+["Aggregations"]
+
+(def d1 (-> rossmann-data
+           (time/adjust-interval time/->years-end)
+           (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
+                           :SalesMedian #(dtype-fun/median (:Sales %))})
+           (tbl/order-by :Date)))
+
+^kind/dataset
+d1
+
+^kind/dataset
+(-> rossmann-data
+    (time/adjust-interval time/->months-end)
+    (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
+                    :SalesMedian #(dtype-fun/median (:Sales %))})
+    (tbl/order-by :Date :asc))
