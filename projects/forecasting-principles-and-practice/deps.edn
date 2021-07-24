@@ -12,4 +12,8 @@
         aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
         
         org.threeten/threeten-extra {:mvn/version "1.6.0"}
+
+        techascent/tech.datatype {:mvn/version "5.18"}
+        techascent/tech.ml.dataset {:mvn/version "6.006"}
+        techascent/tech.viz {:mvn/version "6.00-beta-16-2"}        
 }}
