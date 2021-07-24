@@ -185,6 +185,7 @@
 (predict-drift (test-ausdata :Beer)
                (model-drift (train-ausdata :Beer)))
 
+
 (defn residuals
   [ds y y-hat]
   (dfn/- (ds y) (ds y-hat)))
@@ -262,6 +263,8 @@
           :X :QuarterEnd
           :XTYPE :temporal
           :Y :Beer-fitted
+          :YTPE :quantitative
+          :YSCALE {:zero false}          
           :MCOLOR "red")])
 
 ;; 1 plot for 4 models
@@ -309,13 +312,17 @@
           :X :QuarterEnd
           :XTYPE :temporal
           :Y :Beer-mean-fitted
+          :YTPE :quantitative
+          :YSCALE {:zero false}          
           :MCOLOR "red")
          
          (hc/xform
-          ht/line-chart
+          ht/point-chart
           :X :QuarterEnd
           :XTYPE :temporal
           :Y :Beer-naive-fitted
+          :YTPE :quantitative
+          :YSCALE {:zero false}          
           :MCOLOR "green")
          
          (hc/xform
@@ -323,11 +330,16 @@
           :X :QuarterEnd
           :XTYPE :temporal
           :Y :Beer-snaive-fitted
+          :YTPE :quantitative
+          :YSCALE {:zero false}
           :MCOLOR "blue")
          
          (hc/xform
-          ht/point-chart
+          ht/line-chart
           :X :QuarterEnd
           :XTYPE :temporal
           :Y :Beer-drift-fitted
+          :YTPE :quantitative
+          :YSCALE {:zero false}
           :MCOLOR "brown")])
+
