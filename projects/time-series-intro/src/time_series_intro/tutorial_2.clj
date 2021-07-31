@@ -22,6 +22,7 @@
 (def data (tbl/dataset "data/mapquest_google_trends.csv"
                        {:key-fn keyword
                         :parse-fn {:WeekOf :local-date}}))
+
 ^kind/dataset
 data
 
@@ -44,13 +45,14 @@ data
  :X :Week
  :Y :Hits)
 
-(def regressor (dtype-fun/linear-regressor (:Week data) (:Hits data)))
+(def regressor
+  (dtype-fun/linear-regressor (:Week data) (:Hits data)))
 
 (meta regressor)
 
 (def data-with-linear-regression
   (-> data
-      (tbl/add-column :LinearRegresion (map regressor (:Week data)))))
+      (tbl/add-column :LinearRegression (map regressor (:Week data)))))
 
 ^kind/dataset
 data-with-linear-regression
@@ -80,7 +82,6 @@ data-with-linear-regression
 
 (def regressor-degree2
   (makepoly (polyfit 2 (:Week data) (:Hits data))))
-
 
 (def data-with-regression-degree2
   (-> data
@@ -219,20 +220,24 @@ rossmann-data
  :Y :Sales :YSCALE {:zero false})
 
 ^kind/md-nocode
-["Aggregations"]
+["### Aggregations"]
 
-(def d1 (-> rossmann-data
-           (time/adjust-interval time/->years-end)
-           (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
-                           :SalesMedian #(dtype-fun/median (:Sales %))})
-           (tbl/order-by :Date)))
+(def yearly-averages
+  (-> rossmann-data
+      (time/adjust-interval time/->years-end)
+      (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
+                      :SalesMedian #(dtype-fun/median (:Sales %))})
+      (tbl/order-by :Date)))
+^kind/dataset
+yearly-averages
+
+
+(def monthly-averages
+  (-> rossmann-data
+      (time/adjust-interval time/->months-end)
+      (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
+                      :SalesMedian #(dtype-fun/median (:Sales %))})
+      (tbl/order-by :Date :asc)))
 
 ^kind/dataset
-d1
-
-^kind/dataset
-(-> rossmann-data
-    (time/adjust-interval time/->months-end)
-    (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
-                    :SalesMedian #(dtype-fun/median (:Sales %))})
-    (tbl/order-by :Date :asc))
+monthly-averages
