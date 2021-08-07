@@ -4,7 +4,7 @@
 
 ^kind/md-nocode
 ["# Time Series: Rolling Statistics"]
-
+;; => ["# Time Series: Rolling Statistics"]
 (import '[java.time.format DateTimeFormatter]
         '[org.apache.commons.math3.fitting PolynomialCurveFitter]
         '[org.apache.commons.math3.fitting WeightedObservedPoints])
@@ -228,9 +228,9 @@ rossmann-data
       (tbl/aggregate {:SalesMean #(dtype-fun/mean (:Sales %))
                       :SalesMedian #(dtype-fun/median (:Sales %))})
       (tbl/order-by :Date)))
+
 ^kind/dataset
 yearly-averages
-
 
 (def monthly-averages
   (-> rossmann-data
@@ -241,3 +241,16 @@ yearly-averages
 
 ^kind/dataset
 monthly-averages
+
+^kind/md-nocode
+["### Rolling Sum over all stores"]
+
+
+^kind/dataset
+(-> rossmann-data
+    (tbl/select-rows (range 1000))
+    (tbl/select-columns [:Date :Sales])
+    #_(time/rolling-window :Date 3)
+    )
+
+
