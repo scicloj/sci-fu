@@ -1,6 +1,6 @@
 {:deps {org.clojure/clojure {:mvn/version "1.10.3"}
         techascent/tech.ml.dataset {:mvn/version "6.010"}
         scicloj/tablecloth {:mvn/version "6.006"}
-
+        scicloj/tablecloth.time {:local/root "../../../tablecloth.time"}
         tick {:mvn/version "0.4.24-alpha"}
         }}
