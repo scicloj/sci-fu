@@ -77,3 +77,15 @@
 
 
 (show-image gray-image-luminosity-method)
+
+(def transposed-image
+  (let [new-img           (bufimg/new-image (first our-image-shape) 
+                                              (second our-image-shape)
+                                              :byte-bgr)
+        computed-tensor (tensor/compute-tensor (dtype/shape our-image-tensor)
+                                               (fn [i j k] (our-image-tensor j i k))
+                                                  :int32)]
+        (dtype/copy! computed-tensor (tensor/as-tensor new-img))
+        new-img))
+
+(show-image transposed-image)
