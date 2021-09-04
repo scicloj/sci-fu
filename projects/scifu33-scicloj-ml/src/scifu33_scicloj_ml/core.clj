@@ -13,13 +13,11 @@
 
 data
 
-
 (def trained-model (-> data
                       (tmd-model/set-inference-target :y)
                       (scicloj.metamorph.ml/train {:model-type :smile.regression/ordinary-least-square})))
 
-
-trained-mo
+(keys trained-model)
 
 (scicloj.metamorph.ml/predict data trained-model)
 
