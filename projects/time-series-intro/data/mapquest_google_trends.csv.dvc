@@ -1,0 +1,4 @@
+outs:
+- md5: 478351a0d223735594999d8a01f3ca4b
+  size: 8977
+  path: mapquest_google_trends.csv

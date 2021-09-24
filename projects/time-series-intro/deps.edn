@@ -1,0 +1,7 @@
+{:deps
+ {org.clojure/clojure {:mvn/version "1.10.3"}
+  scicloj/tablecloth.time {:local/root "../../../tablecloth.time"}
+  cnuernber/dtype-next {:mvn/version "8.021"}
+  generateme/fastmath {:mvn/version "2.1.6-SNAPSHOT"}
+  scicloj/notespace {:mvn/version "3-beta9"}
+  aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}}}
