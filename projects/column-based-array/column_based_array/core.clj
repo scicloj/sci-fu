@@ -19,10 +19,10 @@
       (derive :uint32 :uint)
       (derive :uint64 :uint)))
 
-(defn contains [col]
+(defn typeof [col]
   (dtype/elemwise-datatype col))
 
-(defn contains? [col datatype]
+(defn typeof? [col datatype]
   (let [detected-dtype (dtype/elemwise-datatype col)]
     (or (= datatype detected-dtype)
         (isa? datatype-hierarchy
@@ -46,6 +46,8 @@
 
   (def x
     (column (take 100 (repeatedly #(rand-int 20)))))
+
+  x
 
   (def y (fun/> x 10))
 
@@ -88,6 +90,8 @@
   ;; x[c(3, 2, 5)]
   (def x2 (column ["one" "two" "three" "four" "five"]))
 
+  x2
+
   (col/select x2 [2 1 4])
 
   ;; also sub buffer or "subvec"
@@ -97,7 +101,7 @@
   ;; x[c(1, 1, 5, 5, 5, 2)]
   (col/select x2 [0 0 4 4 4 1])
 
-  ;; negative values drop elements
+  ;; negative values drop elements - i.e. exclude drop
   ;; x[c(-1, -3, -5)]
   ;; I don't think we have a good way to do this
 
@@ -108,9 +112,18 @@
   ;;x[!is.na(x)] 
   ;; hmmm this is not great
   (def x3 (column [10 3 nil 5 8 1 nil]))
-  (dtype/datatype  (fun/nan? x3))
+
+  x3
+  ;; is.na(x)
+  (fun/nan? x3)
+
+  (col/select x3 (fun/nan? x3))
 
   (col/select x3 (indices false? (fun/nan? x3)))
+
+
+  (column (fun/+ (column [1 2 3]) 10))
+
 
 ;; missing values
   (tech.v3.datatype.functional/+
