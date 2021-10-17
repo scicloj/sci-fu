@@ -7,25 +7,19 @@ with re:Clojure.
 ### An initial sketch of topics:
 
 Intro: What is dtype-next?
-  a. Can be compared to e.g. Numpy
-  b. But key differences
+  - Can be compared to e.g. Numpy
+  - But key differences
 
 Central abstraction: Buffers (Reader)
-  a. Lazy & Non-caching - use this to show the difference between realized and unrealized array.
-  b. Lazy & Non-caching can be confusing
-  c. But als/o powerful (e.g. efficient because not creating lots of intermediate structures, can describe array transformations, execute later, what else?)
+  - Lazy & Non-caching - use this to show the difference between realized and unrealized array.
+  - Lazy & Non-caching can be confusing
+  - But als/o powerful (e.g. efficient because not creating lots of intermediate structures, can describe array transformations, execute later, what else?)
 
 Array operations (i.e. introduce tech.v3.datatype.functional namespace)
 
 Tensors?
-  a. Also based on buffers
-  b. Can use array operations that we use for buffers in many cases
-  
-Other powers of dtype-next arrays:
-- slicing
-- partitioning
-- etc.
-- is this stuff easy in dtype-next? efficient?
+  - Also based on buffers
+  - Can use array operations that we use for buffers in many cases
   
 
 ## A narrowed outline
