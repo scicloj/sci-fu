@@ -1,7 +1,9 @@
-(ns scifu-38.buffers-intro)
+(ns scifu-38.buffers-intro
+  (:require [criterium.core :refer [quick-bench]]))
 
 
-(require '[tech.v3.datatype :as dtype])
+(require '[tech.v3.datatype :as dtype]
+         '[tech.v3.datatype.functional :as fun])
 
 ;; Assuming an introduction that introduces the use-case
 ;; argument for dtype-next, and part of that is explaining
@@ -24,9 +26,7 @@
 (dtype/as-buffer [1 2 3 4])
 
 
-;; But what is a buffer. We can try.
-(type (dtype/as-buffer [1 2 3 4]))
-
+(type (type/as-buffer [1 2 3 4]))
 ;; That is unususual! What does that mean. Well, `reify` is a way of making a protocol/interface
 ;; concrete on the fly.  So why do we see this here?
 
@@ -67,28 +67,25 @@
 (dtype/->reader [1 2 3])
 
 ;; A reader is just a buffer that is readable, meaning you can read values from it. 
-
 (dtype/datatype (dtype/->reader [1 2 3]))
 (dtype/reader? (dtype/->reader [1 2 3]))
 
-;; A reader is not a writer -- meaning you cannot mutate it's values.
-(def a-reader (dtype/->reader [1 2 3]))
-(dtype/set-value! a-reader 0 0)
+;; There are writers too! We don't use them much. You might use them if you need to mutate data in order
+;; to optimize processing over large amounts of data. I.e. sometimes mutability is needed b/c it is faster.
 
-(def a-writer (dtype/->writer (dtype/as-buffer [1 2 3])))
+;; Most importantly...readers are lazy and non-caching
+(def a-big-reader (dtype/make-reader :int64 1000000 (rand-int 100)))
 
-(dtype/set-value! (dtype/make-container a-writer) 1 0)
+;; Notice:
+;;   - lazy - no 
+;;   - non-caching
+(take 10 a-big-reader)
 
-
-
-
-
-
-
-
-
+;; Note that many clojure functions will work with a reader
+(map inc (take 10 a-big-reader))
+(reduce + (take 10 a-big-reader))
 
 
-
+;; 
 
 
