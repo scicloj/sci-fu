@@ -1,5 +1,6 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
-        techascent/tech.ml.dataset {:mvn/version "6.020"}
+        ;; techascent/tech.ml.dataset {:mvn/version "6.020"}
+        scicloj/tablecloth  {:mvn/version "6.051"}
         generateme/fastmath {:mvn/version "2.1.6"}
         }}
