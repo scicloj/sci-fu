@@ -1,0 +1,4 @@
+outs:
+- md5: 1a417498cf6603ee4292bc848d26c728
+  size: 1638
+  path: bus.csv
